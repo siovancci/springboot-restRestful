@@ -1,0 +1,109 @@
+设置默认欢迎主页:
+    config.config.MyMvcConfig继承WebMvcConfigurer重写里面的修改欢迎页面的方法,该类用@Configuration注解
+国际化:
+    1`编写国际化配置文件
+    2`SpringBoot自动配置好了管理国际化资源文件的组件
+        MessageSourceAutoConfiguration
+        它默认访问的国际化文件类路径下的message.properties,我们可以在主配置t文件中修改路径
+        spring.messages.basename=i18n.login  这样他就会从类路径下的i18n下来找login配置文件
+    3`在tymeleaf中用#{login.username}这样的语法格式取出国际化文件中的值
+    4`怎样实现点按钮实现切换呢?
+        原理:
+            国际化之所以能生效因为有一个Locale对象(区域信息对象):
+            LocaleResolver(区域信息对象解析器):作用是取出区域信息,默认情况下是从请求头中取出区域信息,我们想要点击按钮来实现语言的切换
+            思路:点击按钮,携带不同区域的参数,自定义一个区域信息解析器,根据参数来获得不同的区域信息(字符串拼接等,具体看代码),然后将我们自定义的区域信息解析器添加到容器中,就不会用默认的区域信息解析器了
+怎样防止用户重复提交:将请求方式改为重定向,可以防止重复提交,重定向后访问不了静态资源,需要在视图解析器配置映射关系
+
+怎样防止用户跳过登录页面直接地址访问主页?
+    添加一个拦截器,用户登陆时向session中增加一条数据,拦截器判断session中是否有那条数据,如果有就放行,没有就拦截,
+    (注意:拦截请求不应该包含登陆页面,登陆处理的Controller以及主页(也是登陆页面),以及静态资源)
+
+CRUD-员工离别
+    实验要求:
+        1)RestfulCRUD:CRUD满足Rest风格
+        URI:/资源名称/资源表示  HTTP请求方式区分对资源CRUD操作
+            普通CRUD(uri来区分操作)        RestfulCRUD
+    查询      getEmp                      emp---Get
+    添加      addEmp?xxx                  emp---Post
+    修改      updateEmp?Id=xxx&xxx=xxx    emp/{id}---Put
+    删除      deleteEmp?Id=1              emp/{id}---Delete
+    2`实验的请求架构:
+                                        请求URI           请求方式
+    查询所有员工                          emps                GET
+    查询某个员工                          emp/{id}            GET
+    来到添加页面                          emp                 GET
+    添加员工                              emp                 POST
+    来到修改页面(查出员工进行回显)        emp/{id}            GET     与上面的查出某个员工一样,来到修改页面也就是根据一个员工id查询某个员工信息然后进行回显
+    修改员工                              emp                 PUT
+    删除员工                              emp/{id}            DELETE
+
+
+thymeleaf公共页面元素抽取
+    1`抽取公共片段(两种写法,一种是设置一个fragment,另一种是设置一个id,通过选择器匹配)
+        <div th:fragment="fragment">
+            xxx
+        </div>
+        <div id="id">
+            xxx
+        </div>
+    2`引入公共片段(2*3种),引入方式分分为根据fragment和id引入
+                            按效果又分为插入,替代,插入内容三种
+
+    引入方式:
+        1`<div th:insert="~{模板名 :: fragment}"></div> 这种引入会在外面多一个div,有可能未来页面改变时会发生不可预期的事情,接下来我们看看其他的引入的方法
+        2`<div th:insert="~{模板名 :: #id}"></div>
+
+    效果:
+                        1`th:insert       将整个公共片段插入到声明元素中
+                        2`th:replace      将声明元素替换为公共片段
+                        3`th:include      将被引入的片段的*内容*包含在元素中
+            1`
+            <div>
+                <footer>
+                    xxx
+                </footer>
+            </div
+
+            2`
+            <footer>
+                xxx
+            </footer>
+
+            3`
+            <div>
+                xxx
+            </div>
+thymeleaf页面引入时可以携带参数,每个页面携带的参数不同,可以使公共页面发生不同的变法,这也就是侧边栏点哪个哪个高亮的原理*****
+    比如点击员工列表,那么在展示员工列表页面的引入侧边栏上面就加入员工列表专属的id    在公共部分对传过来的id进行判断,如果是员工列表就高亮员工列表,如果是主页面就高亮主页面
+
+注意:当我们一个Controller接收的请求是POST的时候,那么他forward转发出去的请求也是Post,注意这一点,有时候会导致请求方式不匹配
+
+增加与修改所用到的页面可以是一个页面,不过增加不需要铺开emp而修改需要先通过id获取emp,将emp铺到页面上
+所以我们可以根据页面是否有emp来动态的判断是添加页面还是修改页面
+
+
+注意!!!这个弄了一下午弄明白:记住SpringBoot在1.0的时候默认是开启了spring.mvc.hiddenmethod.filter.enabled,但是Spring2.0的时候默认是false
+这个东西是让我们可以将post请求转换为put和delete请求的,所以一定记得加上
+
+
+
+
+错误处理机制:
+    1`返回一个默认的错误页面
+    2`如果是其他客户端,默认响应一个json数据
+
+如果定制错误响应:
+   1)有模板引擎的情况下:将错误页面放在error/状态码 [将错误页面命名为错误状态码.html 放在模板引擎文件夹的error文件夹下,发生此状态吗的错误就会来到这个路径找这个页面]
+        我们可以使用4xx和5xx错误页面的文件名来匹配这种类型的所有错误,但是精确优先
+        页面能获取的信息:
+            timestamp:时间戳
+            status:状态码
+            error:错误提示
+            exception:异常对象
+            message:异常消息
+            errors:JSR303数据校验的错误都在这里
+
+springboot想要定制三大组件,先写好三大组件,servlet,filter,listener,然后在配置文件中
+通过servletRegistryBean filterRegistryBean listenerRegistryBean将其注册进去
+
+
